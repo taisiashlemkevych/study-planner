@@ -3,13 +3,30 @@ import type { TaskFilter } from '../types/task';
 interface TaskFiltersProps {
   filter: TaskFilter;
   onFilterChange: (filter: TaskFilter) => void;
+  counts: {
+    all: number;
+    active: number;
+    completed: number;
+  };
 }
 
-function TaskFilters({ filter, onFilterChange }: TaskFiltersProps) {
-  const filters: { label: string; value: TaskFilter }[] = [
-    { label: 'All tasks', value: 'all' },
-    { label: 'Active', value: 'active' },
-    { label: 'Completed', value: 'completed' },
+function TaskFilters({
+  filter,
+  onFilterChange,
+  counts,
+}: TaskFiltersProps) {
+  const filters: {
+    label: string;
+    value: TaskFilter;
+    count: number;
+  }[] = [
+    { label: 'All tasks', value: 'all', count: counts.all },
+    { label: 'Active', value: 'active', count: counts.active },
+    {
+      label: 'Completed',
+      value: 'completed',
+      count: counts.completed,
+    },
   ];
 
   return (
@@ -24,6 +41,7 @@ function TaskFilters({ filter, onFilterChange }: TaskFiltersProps) {
           type="button"
         >
           {item.label}
+          <span className="task-filters__count">{item.count}</span>
         </button>
       ))}
     </div>

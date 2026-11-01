@@ -8,9 +8,13 @@ import { initialTasks } from './data/initialTasks';
 import type { Task, TaskFilter } from './types/task';
 import './App.css';
 
+type SortOrder = 'default' | 'priority';
+
 function App() {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [filter, setFilter] = useState<TaskFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('default');
 
   const handleAddTask = (newTask: Task) => {
     setTasks((prevTasks) => [...prevTasks, newTask]);
@@ -32,11 +36,41 @@ function App() {
     );
   };
 
+  const handleClearCompleted = () => {
+    setTasks((prevTasks) =>
+      prevTasks.filter((task) => !task.completed)
+    );
+  };
+
+  const completedCount = tasks.filter((task) => task.completed).length;
+  const activeCount = tasks.length - completedCount;
+
   const filteredTasks = tasks.filter((task) => {
-    if (filter === 'completed') return task.completed;
-    if (filter === 'active') return !task.completed;
-    return true;
+    const matchesFilter =
+      filter === 'all' ||
+      (filter === 'completed' && task.completed) ||
+      (filter === 'active' && !task.completed);
+
+    const matchesSearch = task.title
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase());
+
+    return matchesFilter && matchesSearch;
   });
+
+  const priorityOrder = {
+    high: 3,
+    medium: 2,
+    low: 1,
+  };
+
+  const displayedTasks = [...filteredTasks];
+
+  if (sortOrder === 'priority') {
+    displayedTasks.sort(
+      (a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]
+    );
+  }
 
   return (
     <div className="app">
@@ -66,13 +100,51 @@ function App() {
               </div>
             </div>
 
+            <div className="task-tools">
+              <input
+                className="task-search"
+                type="search"
+                placeholder="Search tasks by title..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Search tasks by title"
+              />
+
+              <select
+                className="task-sort"
+                value={sortOrder}
+                onChange={(event) =>
+                  setSortOrder(event.target.value as SortOrder)
+                }
+                aria-label="Sort tasks"
+              >
+                <option value="default">Default order</option>
+                <option value="priority">Sort by priority</option>
+              </select>
+            </div>
+
             <TaskFilters
               filter={filter}
               onFilterChange={setFilter}
+              counts={{
+                all: tasks.length,
+                active: activeCount,
+                completed: completedCount,
+              }}
             />
 
+            {completedCount > 0 && (
+              <button
+                className="clear-completed"
+                onClick={handleClearCompleted}
+                type="button"
+              >
+                Clear completed tasks ({completedCount})
+              </button>
+            )}
+
             <TaskList
-              tasks={filteredTasks}
+              tasks={displayedTasks}
               hasTasks={tasks.length > 0}
               onToggle={handleToggleTask}
               onDelete={handleDeleteTask}
