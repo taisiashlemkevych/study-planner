@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SyntheticEvent  } from 'react';
 import type { Priority, Task } from '../types/task';
 
 interface TaskFormProps {
@@ -11,7 +11,7 @@ function TaskForm({ onAddTask }: TaskFormProps) {
   const [category, setCategory] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!title.trim()) {
