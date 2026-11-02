@@ -42,7 +42,7 @@ function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
             </span>
 
             <span className="task-card__status">
-              {task.completed ? 'Completed' : 'In progress'}
+              {task.completed ? 'Completed' : 'Active'}
             </span>
           </div>
         </div>

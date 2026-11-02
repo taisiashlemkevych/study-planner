@@ -22,7 +22,7 @@ function TaskStats({ tasks }: TaskStatsProps) {
       </div>
 
       <div className="stat-card stat-card--active">
-        <span className="stat-card__label">In progress</span>
+        <span className="stat-card__label">Active</span>
         <strong className="stat-card__value">{active}</strong>
       </div>
     </section>
