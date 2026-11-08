@@ -6,6 +6,7 @@ interface TaskListProps {
   hasTasks: boolean;
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
+  onEdit: (task: Task) => void;
 }
 
 function TaskList({
@@ -13,6 +14,7 @@ function TaskList({
   hasTasks,
   onToggle,
   onDelete,
+  onEdit,
 }: TaskListProps) {
   if (!hasTasks) {
     return (
@@ -40,6 +42,7 @@ function TaskList({
           task={task}
           onToggle={onToggle}
           onDelete={onDelete}
+          onEdit={onEdit}
         />
       ))}
     </div>

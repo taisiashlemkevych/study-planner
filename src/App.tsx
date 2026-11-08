@@ -1,48 +1,37 @@
 import { useState } from 'react';
+
 import Header from './components/Header';
 import TaskForm from './components/TaskForm';
 import TaskFilters from './components/TaskFilters';
 import TaskList from './components/TaskList';
 import TaskStats from './components/TaskStats';
-import { initialTasks } from './data/initialTasks';
+
+import { useTaskContext } from './hooks/useTaskContext';
 import type { Task, TaskFilter } from './types/task';
+
 import './App.css';
 
 type SortOrder = 'default' | 'priority';
 
 function App() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const {
+    tasks,
+    addTask,
+    toggleTask,
+    deleteTask,
+    updateTask,
+    clearCompleted,
+  } = useTaskContext();
+
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<SortOrder>('default');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const handleAddTask = (newTask: Task) => {
-    setTasks((prevTasks) => [...prevTasks, newTask]);
-  };
+  const completedCount = tasks.filter(
+    (task) => task.completed
+  ).length;
 
-  const handleToggleTask = (id: number) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task
-      )
-    );
-  };
-
-  const handleDeleteTask = (id: number) => {
-    setTasks((prevTasks) =>
-      prevTasks.filter((task) => task.id !== id)
-    );
-  };
-
-  const handleClearCompleted = () => {
-    setTasks((prevTasks) =>
-      prevTasks.filter((task) => !task.completed)
-    );
-  };
-
-  const completedCount = tasks.filter((task) => task.completed).length;
   const activeCount = tasks.length - completedCount;
 
   const filteredTasks = tasks.filter((task) => {
@@ -68,9 +57,19 @@ function App() {
 
   if (sortOrder === 'priority') {
     displayedTasks.sort(
-      (a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]
+      (a, b) =>
+        priorityOrder[b.priority] - priorityOrder[a.priority]
     );
   }
+
+  const handleUpdateTask = (task: Task) => {
+    updateTask(task);
+    setEditingTask(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTask(null);
+  };
 
   return (
     <div className="app">
@@ -82,15 +81,25 @@ function App() {
             <span className="welcome-section__eyebrow">
               YOUR LEARNING SPACE
             </span>
+
             <h1>My Study Planner</h1>
-            <p>Plan your tasks and keep track of your progress.</p>
+
+            <p>
+              Plan your tasks and keep track of your progress.
+            </p>
           </div>
         </div>
 
         <TaskStats tasks={tasks} />
 
         <div className="app__content">
-          <TaskForm onAddTask={handleAddTask} />
+          <TaskForm
+            key={editingTask?.id ?? 'new-task'}
+            onAddTask={addTask}
+            editingTask={editingTask}
+            onUpdateTask={handleUpdateTask}
+            onCancelEdit={handleCancelEdit}
+          />
 
           <section className="tasks-section">
             <div className="section-heading">
@@ -106,7 +115,9 @@ function App() {
                 type="search"
                 placeholder="Search tasks by title..."
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) =>
+                  setSearchQuery(event.target.value)
+                }
                 aria-label="Search tasks by title"
               />
 
@@ -136,7 +147,7 @@ function App() {
             {completedCount > 0 && (
               <button
                 className="clear-completed"
-                onClick={handleClearCompleted}
+                onClick={clearCompleted}
                 type="button"
               >
                 Clear completed tasks ({completedCount})
@@ -146,8 +157,9 @@ function App() {
             <TaskList
               tasks={displayedTasks}
               hasTasks={tasks.length > 0}
-              onToggle={handleToggleTask}
-              onDelete={handleDeleteTask}
+              onToggle={toggleTask}
+              onDelete={deleteTask}
+              onEdit={setEditingTask}
             />
           </section>
         </div>

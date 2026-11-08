@@ -1,15 +1,36 @@
-import { useState, type SyntheticEvent  } from 'react';
+import { useState, type SyntheticEvent } from 'react';
 import type { Priority, Task } from '../types/task';
 
 interface TaskFormProps {
   onAddTask: (task: Task) => void;
+  editingTask: Task | null;
+  onUpdateTask: (task: Task) => void;
+  onCancelEdit: () => void;
 }
 
-function TaskForm({ onAddTask }: TaskFormProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [priority, setPriority] = useState<Priority>('medium');
+function TaskForm({
+  onAddTask,
+  editingTask,
+  onUpdateTask,
+  onCancelEdit,
+}: TaskFormProps) {
+  const [title, setTitle] = useState(editingTask?.title ?? '');
+  const [description, setDescription] = useState(
+    editingTask?.description ?? ''
+  );
+  const [category, setCategory] = useState(
+    editingTask?.category ?? ''
+  );
+  const [priority, setPriority] = useState<Priority>(
+    editingTask?.priority ?? 'medium'
+  );
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setCategory('');
+    setPriority('medium');
+  };
 
   const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -18,29 +39,47 @@ function TaskForm({ onAddTask }: TaskFormProps) {
       return;
     }
 
-    const newTask: Task = {
-      id: Date.now(),
-      title: title.trim(),
-      description: description.trim(),
-      category: category.trim() || 'General',
-      priority,
-      completed: false,
-    };
+    if (editingTask) {
+      const updatedTask: Task = {
+        ...editingTask,
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim() || 'General',
+        priority,
+      };
 
-    onAddTask(newTask);
+      onUpdateTask(updatedTask);
+    } else {
+      const newTask: Task = {
+        id: Date.now(),
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim() || 'General',
+        priority,
+        completed: false,
+      };
 
-    setTitle('');
-    setDescription('');
-    setCategory('');
-    setPriority('medium');
+      onAddTask(newTask);
+    }
+
+    resetForm();
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    onCancelEdit();
   };
 
   return (
     <section className="task-form-section">
       <div className="section-heading">
         <div>
-          <h2>Add new task</h2>
-          <p>Create a new learning goal</p>
+          <h2>{editingTask ? 'Edit task' : 'Add new task'}</h2>
+          <p>
+            {editingTask
+              ? 'Update your learning goal'
+              : 'Create a new learning goal'}
+          </p>
         </div>
       </div>
 
@@ -97,8 +136,18 @@ function TaskForm({ onAddTask }: TaskFormProps) {
         </div>
 
         <button className="button button--primary" type="submit">
-          + Add task
+          {editingTask ? 'Save changes' : '+ Add task'}
         </button>
+
+        {editingTask && (
+          <button
+            className="button"
+            type="button"
+            onClick={handleCancel}
+          >
+            Cancel
+          </button>
+        )}
       </form>
     </section>
   );

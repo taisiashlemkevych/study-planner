@@ -470,3 +470,34 @@
     max-width: none;
   }
 }
+
+.task-card__edit {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid #f0dfb2;
+  border-radius: 6px;
+  background: #fff6dc;
+  color: #a18442;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.task-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-card__edit:hover {
+  background: #f9e9bd;
+  border-color: #e7d195;
+  color: #8c6d2e;
+  transform: translateY(-1px);
+}
+
+.task-card__edit:active {
+  transform: scale(0.97);
+}
