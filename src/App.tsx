@@ -1,11 +1,16 @@
 import { useState } from 'react';
+
 import Header from './components/Header';
 import TaskForm from './components/TaskForm';
 import TaskFilters from './components/TaskFilters';
 import TaskList from './components/TaskList';
 import TaskStats from './components/TaskStats';
+
 import { useTaskContext } from './hooks/useTaskContext';
+import { useTheme } from './hooks/useTheme';
+
 import type { Task, TaskFilter } from './types/task';
+
 import './App.css';
 
 type SortOrder = 'default' | 'priority';
@@ -21,6 +26,8 @@ function App() {
     undoDelete,
     pendingDelete,
   } = useTaskContext();
+
+  const { theme, toggleTheme } = useTheme();
 
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,7 +74,7 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className={`app app--${theme}`}>
       <Header />
 
       <main className="app__main">
@@ -83,6 +90,15 @@ function App() {
               Plan your tasks and keep track of your progress.
             </p>
           </div>
+
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+          >
+            {theme === 'light' ? 'Dark mode' : 'Light mode'}
+          </button>
         </div>
 
         <TaskStats tasks={tasks} />

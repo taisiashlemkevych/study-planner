@@ -597,3 +597,165 @@
     padding: 13px 14px;
   }
 }
+
+.welcome-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.theme-toggle {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border: 1px solid #ead5dc;
+  border-radius: 8px;
+  background: #fff7fa;
+  color: #a9677f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  transition: 0.2s;
+}
+
+.theme-toggle:hover {
+  background: #fbe8ee;
+}
+
+.app--dark {
+  background: #24232b;
+  color: #eeeaf2;
+}
+
+.app--dark .header {
+  background: #2e2c36;
+  border-color: #45414e;
+}
+
+.app--dark .header__logo,
+.app--dark .welcome-section h1,
+.app--dark .section-heading h2,
+.app--dark .task-card__title,
+.app--dark .form-group label {
+  color: #eeeaf2;
+}
+
+.app--dark .header__subtitle,
+.app--dark .welcome-section p,
+.app--dark .section-heading p,
+.app--dark .stat-card__label,
+.app--dark .task-card__description {
+  color: #aaa3b5;
+}
+
+.app--dark .task-form-section,
+.app--dark .tasks-section,
+.app--dark .stat-card {
+  background: #302e39;
+  border-color: #494451;
+}
+
+.app--dark .stat-card--completed,
+.app--dark .stat-card--active {
+  background: #35313d;
+}
+
+.app--dark .stat-card__value {
+  color: #e8c3d1;
+}
+
+.app--dark .form-group input,
+.app--dark .form-group textarea,
+.app--dark .form-group select,
+.app--dark .task-search,
+.app--dark .task-sort {
+  background: #26242d;
+  border-color: #514a5b;
+  color: #eeeaf2;
+}
+
+.app--dark .task-card {
+  background: #34313c;
+  border-color: #494451;
+}
+
+.app--dark .task-card--completed {
+  background: #302d37;
+}
+
+.app--dark .task-card--completed .task-card__title {
+  color: #9991a3;
+}
+
+.app--dark .task-filters__button {
+  background: #302e39;
+  border-color: #514a5b;
+  color: #c5bdce;
+}
+
+.app--dark .task-filters__button--active {
+  background: #55404d;
+  border-color: #9e7187;
+  color: #f0c8d8;
+}
+
+.app--dark .task-filters__count {
+  background: #45404e;
+  color: #eeeaf2;
+}
+
+.app--dark .clear-completed {
+  background: #3c3038;
+  border-color: #654752;
+  color: #e5aabb;
+}
+
+.app--dark .task-card__category,
+.app--dark .task-card__status {
+  background: #453744;
+  color: #e0b6c9;
+}
+
+.app--dark .theme-toggle {
+  background: #453744;
+  border-color: #71566a;
+  color: #f0c8d8;
+}
+
+.app--dark .theme-toggle:hover {
+  background: #574354;
+}
+
+.app--dark .app__footer {
+  color: #9991a3;
+}
+
+.app--dark .undo-toast {
+  background: #302e39;
+  border-color: #514a5b;
+}
+
+.app--dark .undo-toast__title {
+  color: #eeeaf2;
+}
+
+.app--dark .undo-toast__description {
+  color: #aaa3b5;
+}
+
+.app--dark .undo-toast__button {
+  background: #4b3b2b;
+  border-color: #8a7047;
+  color: #f2d59a;
+}
+
+.app--dark .undo-toast__timer {
+  background: #453744;
+}
+
+@media (max-width: 500px) {
+  .welcome-section {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
