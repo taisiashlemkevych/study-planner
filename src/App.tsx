@@ -1,19 +1,22 @@
-import { useState } from 'react';
-
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocalStorage } from './hooks/useLocalStorage';
 import Header from './components/Header';
 import TaskForm from './components/TaskForm';
 import TaskFilters from './components/TaskFilters';
 import TaskList from './components/TaskList';
 import TaskStats from './components/TaskStats';
-
+import { Toast, type ToastType } from './components/Toast';
 import { useTaskContext } from './hooks/useTaskContext';
 import { useTheme } from './hooks/useTheme';
-
 import type { Task, TaskFilter } from './types/task';
-
 import './App.css';
 
 type SortOrder = 'default' | 'priority';
+
+interface ToastMessage {
+  message: string;
+  type: ToastType;
+}
 
 function App() {
   const {
@@ -29,10 +32,22 @@ function App() {
 
   const { theme, toggleTheme } = useTheme();
 
-  const [filter, setFilter] = useState<TaskFilter>('all');
+  const [filter, setFilter] = useLocalStorage<TaskFilter>(
+    'study-planner-filter',
+    'all'
+  );
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<SortOrder>('default');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const previousPendingDelete = useRef<string | null>(null);
+  const undoWasClicked = useRef(false);
+
+  const handleCloseToast = useCallback(() => {
+    setToast(null);
+  }, []);
 
   const completedCount = tasks.filter(
     (task) => task.completed
@@ -68,10 +83,97 @@ function App() {
     );
   }
 
-  const handleUpdateTask = (task: Task) => {
-    updateTask(task);
-    setEditingTask(null);
+  const handleAddTask = (task: Task) => {
+    try {
+      addTask(task);
+
+      setToast({
+        message: 'Task created successfully.',
+        type: 'success',
+      });
+    } catch {
+      setToast({
+        message: 'Failed to create task.',
+        type: 'error',
+      });
+    }
   };
+
+  const handleUpdateTask = (task: Task) => {
+    try {
+      updateTask(task);
+      setEditingTask(null);
+
+      setToast({
+        message: 'Task updated successfully.',
+        type: 'success',
+      });
+    } catch {
+      setToast({
+        message: 'Failed to update task.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleDeleteTask = (id: number) => {
+    try {
+      deleteTask(id);
+    } catch {
+      setToast({
+        message: 'Failed to delete task.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleUndoDelete = () => {
+    undoWasClicked.current = true;
+    undoDelete();
+  };
+
+  const handleClearCompleted = () => {
+    try {
+      clearCompleted();
+
+      setToast({
+        message: 'Completed tasks cleared successfully.',
+        type: 'success',
+      });
+    } catch {
+      setToast({
+        message: 'Failed to clear completed tasks.',
+        type: 'error',
+      });
+    }
+  };
+
+  useEffect(() => {
+    document.title = `Study Planner - ${activeCount} active tasks`;
+  }, [activeCount]);
+
+  useEffect(() => {
+    if (pendingDelete) {
+      previousPendingDelete.current = pendingDelete.title;
+      return;
+    }
+
+    if (previousPendingDelete.current !== null) {
+      const deletedTaskTitle = previousPendingDelete.current;
+
+      previousPendingDelete.current = null;
+
+      if (undoWasClicked.current) {
+        undoWasClicked.current = false;
+        return;
+      }
+
+      setToast({
+        message: `"${deletedTaskTitle}" was permanently deleted.`,
+        type: 'success',
+      });
+    }
+  }, [pendingDelete]);
 
   return (
     <div className={`app app--${theme}`}>
@@ -106,7 +208,7 @@ function App() {
         <div className="app__content">
           <TaskForm
             key={editingTask?.id ?? 'new-task'}
-            onAddTask={addTask}
+            onAddTask={handleAddTask}
             editingTask={editingTask}
             onUpdateTask={handleUpdateTask}
             onCancelEdit={() => setEditingTask(null)}
@@ -158,7 +260,7 @@ function App() {
             {completedCount > 0 && (
               <button
                 className="clear-completed"
-                onClick={clearCompleted}
+                onClick={handleClearCompleted}
                 type="button"
               >
                 Clear completed tasks ({completedCount})
@@ -169,7 +271,7 @@ function App() {
               tasks={displayedTasks}
               hasTasks={tasks.length > 0}
               onToggle={toggleTask}
-              onDelete={deleteTask}
+              onDelete={handleDeleteTask}
               onEdit={setEditingTask}
             />
           </section>
@@ -185,18 +287,18 @@ function App() {
           <div className="undo-toast__content">
             <div className="undo-toast__message">
               <span className="undo-toast__title">
-                Task deleted
+                Task will be deleted
               </span>
 
               <span className="undo-toast__description">
-                "{pendingDelete.title}" was deleted.
+                "{pendingDelete.title}" will be deleted in 5 seconds.
               </span>
             </div>
 
             <button
               className="undo-toast__button"
               type="button"
-              onClick={undoDelete}
+              onClick={handleUndoDelete}
             >
               Undo
             </button>
@@ -206,6 +308,14 @@ function App() {
             <div className="undo-toast__timer-progress" />
           </div>
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={handleCloseToast}
+        />
       )}
     </div>
   );
