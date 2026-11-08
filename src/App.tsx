@@ -1,14 +1,11 @@
 import { useState } from 'react';
-
 import Header from './components/Header';
 import TaskForm from './components/TaskForm';
 import TaskFilters from './components/TaskFilters';
 import TaskList from './components/TaskList';
 import TaskStats from './components/TaskStats';
-
 import { useTaskContext } from './hooks/useTaskContext';
 import type { Task, TaskFilter } from './types/task';
-
 import './App.css';
 
 type SortOrder = 'default' | 'priority';
@@ -21,6 +18,8 @@ function App() {
     deleteTask,
     updateTask,
     clearCompleted,
+    undoDelete,
+    pendingDelete,
   } = useTaskContext();
 
   const [filter, setFilter] = useState<TaskFilter>('all');
@@ -67,10 +66,6 @@ function App() {
     setEditingTask(null);
   };
 
-  const handleCancelEdit = () => {
-    setEditingTask(null);
-  };
-
   return (
     <div className="app">
       <Header />
@@ -98,7 +93,7 @@ function App() {
             onAddTask={addTask}
             editingTask={editingTask}
             onUpdateTask={handleUpdateTask}
-            onCancelEdit={handleCancelEdit}
+            onCancelEdit={() => setEditingTask(null)}
           />
 
           <section className="tasks-section">
@@ -168,6 +163,34 @@ function App() {
       <footer className="app__footer">
         Study Planner · Keep learning, keep growing.
       </footer>
+
+      {pendingDelete && (
+        <div className="undo-toast" role="status">
+          <div className="undo-toast__content">
+            <div className="undo-toast__message">
+              <span className="undo-toast__title">
+                Task deleted
+              </span>
+
+              <span className="undo-toast__description">
+                "{pendingDelete.title}" was deleted.
+              </span>
+            </div>
+
+            <button
+              className="undo-toast__button"
+              type="button"
+              onClick={undoDelete}
+            >
+              Undo
+            </button>
+          </div>
+
+          <div className="undo-toast__timer">
+            <div className="undo-toast__timer-progress" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

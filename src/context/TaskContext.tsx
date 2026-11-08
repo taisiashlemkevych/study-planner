@@ -1,55 +1,129 @@
-import {
-  useReducer,
-  type ReactNode,
-} from 'react';
-
+import { useEffect, useReducer, type ReactNode } from 'react';
 import type { Task } from '../types/task';
-import { initialTasks } from '../data/initialTasks';
-import { taskReducer } from '../reducers/taskReducer';
+import { initialTaskState, taskReducer, type TaskState } from '../reducers/taskReducer';
 import { TaskContext } from './TaskContextValue';
 
+const STORAGE_KEY = 'study-planner-tasks';
+const DELETE_DELAY = 5000;
+
 interface TaskProviderProps {
-  children: ReactNode;
+    children: ReactNode;
 }
 
-export function TaskProvider({ children }: TaskProviderProps) {
-  const [tasks, dispatch] = useReducer(
-    taskReducer,
-    initialTasks
-  );
+function loadTaskState(): TaskState {
+    try {
+        const savedState = localStorage.getItem(STORAGE_KEY);
 
-  const addTask = (task: Task) => {
-    dispatch({ type: 'ADD_TASK', payload: task });
-  };
+        if (savedState) {
+            const parsedState = JSON.parse(savedState) as TaskState;
 
-  const toggleTask = (id: number) => {
-    dispatch({ type: 'TOGGLE_TASK', payload: id });
-  };
+            if (Array.isArray(parsedState.tasks)) {
+                return {
+                    tasks: parsedState.tasks,
+                    pendingDelete: parsedState.pendingDelete ?? null,
+                };
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load tasks from localStorage:', error);
+    }
 
-  const deleteTask = (id: number) => {
-    dispatch({ type: 'DELETE_TASK', payload: id });
-  };
+    return initialTaskState;
+}
 
-  const updateTask = (task: Task) => {
-    dispatch({ type: 'UPDATE_TASK', payload: task });
-  };
+export function TaskProvider({
+    children,
+}: TaskProviderProps) {
+    const [state, dispatch] = useReducer(
+        taskReducer,
+        undefined,
+        loadTaskState
+    );
 
-  const clearCompleted = () => {
-    dispatch({ type: 'CLEAR_COMPLETED' });
-  };
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify(state)
+            );
+        } catch (error) {
+            console.error('Failed to save tasks to localStorage:', error);
+        }
+    }, [state]);
 
-  return (
-    <TaskContext.Provider
-      value={{
-        tasks,
-        addTask,
-        toggleTask,
-        deleteTask,
-        updateTask,
-        clearCompleted,
-      }}
-    >
-      {children}
-    </TaskContext.Provider>
-  );
+    useEffect(() => {
+        if (!state.pendingDelete) {
+            return;
+        }
+
+        const taskId = state.pendingDelete.task.id;
+
+        const timeoutId = window.setTimeout(() => {
+            dispatch({
+                type: 'CONFIRM_DELETE',
+                payload: taskId,
+            });
+        }, DELETE_DELAY);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [state.pendingDelete]);
+
+    const addTask = (task: Task) => {
+        dispatch({
+            type: 'ADD_TASK',
+            payload: task,
+        });
+    };
+
+    const toggleTask = (id: number) => {
+        dispatch({
+            type: 'TOGGLE_TASK',
+            payload: id,
+        });
+    };
+
+    const deleteTask = (id: number) => {
+        dispatch({
+            type: 'DELETE_TASK',
+            payload: id,
+        });
+    };
+
+    const updateTask = (task: Task) => {
+        dispatch({
+            type: 'UPDATE_TASK',
+            payload: task,
+        });
+    };
+
+    const clearCompleted = () => {
+        dispatch({
+            type: 'CLEAR_COMPLETED',
+        });
+    };
+
+    const undoDelete = () => {
+        dispatch({
+            type: 'UNDO_DELETE',
+        });
+    };
+
+    return (
+        <TaskContext.Provider
+            value={{
+                tasks: state.tasks,
+                addTask,
+                toggleTask,
+                deleteTask,
+                updateTask,
+                clearCompleted,
+                undoDelete,
+                pendingDelete: state.pendingDelete?.task ?? null,
+            }}
+        >
+            {children}
+        </TaskContext.Provider>
+    );
 }

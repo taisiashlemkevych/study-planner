@@ -1,5 +1,5 @@
-import { createContext } from 'react';
-import type { Task } from '../types/task';
+import { createContext } from "react";
+import type { Task } from "../types/task";
 
 export interface TaskContextType {
   tasks: Task[];
@@ -8,8 +8,10 @@ export interface TaskContextType {
   deleteTask: (id: number) => void;
   updateTask: (task: Task) => void;
   clearCompleted: () => void;
+  undoDelete: () => void;
+  pendingDelete: Task | null;
 }
 
-export const TaskContext = createContext<
-  TaskContextType | undefined
->(undefined);
+export const TaskContext = createContext<TaskContextType | undefined>(
+  undefined,
+);

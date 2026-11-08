@@ -7,22 +7,31 @@ interface TaskItemProps {
   onEdit: (task: Task) => void;
 }
 
-function TaskItem({ task, onToggle, onDelete, onEdit }: TaskItemProps) {
+function TaskItem({
+  task,
+  onToggle,
+  onDelete,
+  onEdit,
+}: TaskItemProps) {
   return (
     <article
-      className={`task-card ${task.completed ? 'task-card--completed' : ''
-        }`}
+      className={`task-card ${
+        task.completed ? 'task-card--completed' : ''
+      }`}
     >
       <div className="task-card__main">
         <button
-          className={`task-card__checkbox ${task.completed ? 'task-card__checkbox--checked' : ''
-            }`}
+          className={`task-card__checkbox ${
+            task.completed ? 'task-card__checkbox--checked' : ''
+          }`}
           onClick={() => onToggle(task.id)}
           type="button"
-          aria-label={task.completed ? 'Mark as active' : 'Mark as completed'}
-        >
-          {task.completed ? '✓' : ''}
-        </button>
+          aria-label={
+            task.completed
+              ? 'Mark as active'
+              : 'Mark as completed'
+          }
+        />
 
         <div className="task-card__content">
           <h3 className="task-card__title">{task.title}</h3>
@@ -32,7 +41,9 @@ function TaskItem({ task, onToggle, onDelete, onEdit }: TaskItemProps) {
           </p>
 
           <div className="task-card__details">
-            <span className="task-card__category">{task.category}</span>
+            <span className="task-card__category">
+              {task.category}
+            </span>
 
             <span className={`priority priority--${task.priority}`}>
               {task.priority}
