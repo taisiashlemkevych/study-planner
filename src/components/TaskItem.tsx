@@ -5,6 +5,7 @@ interface TaskItemProps {
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
   onEdit: (task: Task) => void;
+  onView: (id: number) => void;
 }
 
 function TaskItem({
@@ -12,6 +13,7 @@ function TaskItem({
   onToggle,
   onDelete,
   onEdit,
+  onView,
 }: TaskItemProps) {
   return (
     <article
@@ -57,6 +59,15 @@ function TaskItem({
       </div>
 
       <div className="task-card__actions">
+        <button
+          className="task-card__edit"
+          onClick={() => onView(task.id)}
+          type="button"
+          aria-label={`View details of ${task.title}`}
+        >
+          Details
+        </button>
+
         <button
           className="task-card__edit"
           onClick={() => onEdit(task)}

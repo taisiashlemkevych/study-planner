@@ -7,6 +7,7 @@ interface TaskListProps {
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
   onEdit: (task: Task) => void;
+  onView: (id: number) => void;
 }
 
 function TaskList({
@@ -15,6 +16,7 @@ function TaskList({
   onToggle,
   onDelete,
   onEdit,
+  onView,
 }: TaskListProps) {
   if (!hasTasks) {
     return (
@@ -43,6 +45,7 @@ function TaskList({
           onToggle={onToggle}
           onDelete={onDelete}
           onEdit={onEdit}
+          onView={onView}
         />
       ))}
     </div>

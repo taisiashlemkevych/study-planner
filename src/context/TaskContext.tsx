@@ -1,129 +1,224 @@
-import { useEffect, useReducer, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+
 import type { Task } from '../types/task';
-import { initialTaskState, taskReducer, type TaskState } from '../reducers/taskReducer';
+import { taskRepository } from '../repositories/taskRepository';
 import { TaskContext } from './TaskContextValue';
 
-const STORAGE_KEY = 'study-planner-tasks';
+interface TaskProviderProps {
+  children: ReactNode;
+}
+
+interface PendingDelete {
+  task: Task;
+  index: number;
+}
+
 const DELETE_DELAY = 5000;
 
-interface TaskProviderProps {
-    children: ReactNode;
-}
+export function TaskProvider({ children }: TaskProviderProps) {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [locallyCreatedTasks, setLocallyCreatedTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
 
-function loadTaskState(): TaskState {
-    try {
-        const savedState = localStorage.getItem(STORAGE_KEY);
+  const loadTasks = useCallback(
+    async (page: number, query: string, signal?: AbortSignal) => {
+      setLoading(true);
+      setError(null);
 
-        if (savedState) {
-            const parsedState = JSON.parse(savedState) as TaskState;
+      try {
+        const limit = 10;
+        const skip = (page - 1) * limit;
+        const normalizedQuery = query.trim().toLowerCase();
 
-            if (Array.isArray(parsedState.tasks)) {
-                return {
-                    tasks: parsedState.tasks,
-                    pendingDelete: parsedState.pendingDelete ?? null,
-                };
-            }
+        if (normalizedQuery) {
+          const apiResult = await taskRepository.search(
+            normalizedQuery,
+            1000,
+            0,
+            signal,
+          );
+
+          if (signal?.aborted) return;
+
+          const localMatches = locallyCreatedTasks.filter((task) =>
+            task.title.toLowerCase().includes(normalizedQuery),
+          );
+
+          const tasksById = new Map<number, Task>();
+          [...apiResult.tasks, ...localMatches].forEach((task) => {
+            tasksById.set(task.id, task);
+          });
+
+          const matchingTasks = Array.from(tasksById.values());
+          setTasks(matchingTasks.slice(skip, skip + limit));
+          setTotal(matchingTasks.length);
+        } else {
+          const result = await taskRepository.getAll(limit, skip, signal);
+
+          if (signal?.aborted) return;
+
+          const localStart = Math.max(0, skip - result.total);
+          const localTasksForPage = locallyCreatedTasks.slice(
+            localStart,
+            localStart + Math.max(0, limit - result.tasks.length),
+          );
+
+          setTasks([...result.tasks, ...localTasksForPage]);
+          setTotal(result.total + locallyCreatedTasks.length);
         }
-    } catch (error) {
-        console.error('Failed to load tasks from localStorage:', error);
+      } catch (err) {
+        if (signal?.aborted) return;
+        setError(err instanceof Error ? err.message : 'Failed to load tasks.');
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [locallyCreatedTasks],
+  );
+
+  const addTask = async (task: Task): Promise<Task> => {
+    setError(null);
+    try {
+      const createdTask = await taskRepository.create(task);
+      const taskWithId = { ...task, id: createdTask.id };
+      setLocallyCreatedTasks((previous) => [...previous, taskWithId]);
+      setTasks((previous) => [...previous, taskWithId]);
+      setTotal((previous) => previous + 1);
+      return taskWithId;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create task.');
+      throw err;
+    }
+  };
+
+  const toggleTask = async (id: number) => {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+
+    const updatedTask = { ...task, completed: !task.completed };
+
+    setTasks((previous) =>
+      previous.map((item) => (item.id === id ? updatedTask : item)),
+    );
+    setError(null);
+
+    try {
+      await taskRepository.update(id, { completed: updatedTask.completed });
+    } catch (err) {
+      setTasks((previous) =>
+        previous.map((item) => (item.id === id ? task : item)),
+      );
+      setError(err instanceof Error ? err.message : 'Failed to update task.');
+      throw err;
+    }
+  };
+
+  const updateTask = async (updatedTask: Task) => {
+    const previousTask = tasks.find((item) => item.id === updatedTask.id);
+    if (!previousTask) return;
+
+    setError(null);
+    try {
+      await taskRepository.update(updatedTask.id, {
+        title: updatedTask.title,
+        completed: updatedTask.completed,
+        description: updatedTask.description,
+      });
+      setTasks((previous) =>
+        previous.map((item) => (item.id === updatedTask.id ? updatedTask : item)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update task.');
+      throw err;
+    }
+  };
+
+  const deleteTask = async (id: number) => {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+
+    if (pendingDelete) {
+      void taskRepository.delete(pendingDelete.task.id).catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to delete task.');
+      });
     }
 
-    return initialTaskState;
-}
+    const index = tasks.findIndex((item) => item.id === id);
+    setPendingDelete({ task, index });
+    setTasks((previous) => previous.filter((item) => item.id !== id));
+    setTotal((previous) => Math.max(0, previous - 1));
+  };
 
-export function TaskProvider({
-    children,
-}: TaskProviderProps) {
-    const [state, dispatch] = useReducer(
-        taskReducer,
-        undefined,
-        loadTaskState
-    );
+  const undoDelete = () => {
+    if (!pendingDelete) return;
 
-    useEffect(() => {
-        try {
-            localStorage.setItem(
-                STORAGE_KEY,
-                JSON.stringify(state)
-            );
-        } catch (error) {
-            console.error('Failed to save tasks to localStorage:', error);
-        }
-    }, [state]);
+    setTasks((previous) => {
+      const restored = [...previous];
+      restored.splice(Math.min(pendingDelete.index, restored.length), 0, pendingDelete.task);
+      return restored;
+    });
+    setTotal((previous) => previous + 1);
+    setPendingDelete(null);
+  };
 
-    useEffect(() => {
-        if (!state.pendingDelete) {
-            return;
-        }
+  useEffect(() => {
+    if (!pendingDelete) return;
 
-        const taskId = state.pendingDelete.task.id;
-
-        const timeoutId = window.setTimeout(() => {
-            dispatch({
-                type: 'CONFIRM_DELETE',
-                payload: taskId,
-            });
-        }, DELETE_DELAY);
-
-        return () => {
-            window.clearTimeout(timeoutId);
-        };
-    }, [state.pendingDelete]);
-
-    const addTask = (task: Task) => {
-        dispatch({
-            type: 'ADD_TASK',
-            payload: task,
+    const timer = window.setTimeout(() => {
+      void taskRepository
+        .delete(pendingDelete.task.id)
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : 'Failed to delete task.');
+        })
+        .finally(() => {
+          setPendingDelete((current) =>
+            current?.task.id === pendingDelete.task.id ? null : current,
+          );
         });
-    };
+    }, DELETE_DELAY);
 
-    const toggleTask = (id: number) => {
-        dispatch({
-            type: 'TOGGLE_TASK',
-            payload: id,
-        });
-    };
+    return () => window.clearTimeout(timer);
+  }, [pendingDelete]);
 
-    const deleteTask = (id: number) => {
-        dispatch({
-            type: 'DELETE_TASK',
-            payload: id,
-        });
-    };
+  const clearCompleted = async () => {
+    const completedTasks = tasks.filter((task) => task.completed);
+    for (const task of completedTasks) {
+      await taskRepository.delete(task.id);
+    }
 
-    const updateTask = (task: Task) => {
-        dispatch({
-            type: 'UPDATE_TASK',
-            payload: task,
-        });
-    };
+    setTasks((previous) => previous.filter((task) => !task.completed));
+    setTotal((previous) => Math.max(0, previous - completedTasks.length));
+  };
 
-    const clearCompleted = () => {
-        dispatch({
-            type: 'CLEAR_COMPLETED',
-        });
-    };
+  const retry = () => setError(null);
 
-    const undoDelete = () => {
-        dispatch({
-            type: 'UNDO_DELETE',
-        });
-    };
-
-    return (
-        <TaskContext.Provider
-            value={{
-                tasks: state.tasks,
-                addTask,
-                toggleTask,
-                deleteTask,
-                updateTask,
-                clearCompleted,
-                undoDelete,
-                pendingDelete: state.pendingDelete?.task ?? null,
-            }}
-        >
-            {children}
-        </TaskContext.Provider>
-    );
+  return (
+    <TaskContext.Provider
+      value={{
+        tasks,
+        loading,
+        error,
+        total,
+        loadTasks,
+        addTask,
+        toggleTask,
+        deleteTask,
+        updateTask,
+        clearCompleted,
+        retry,
+        pendingDelete: pendingDelete?.task ?? null,
+        undoDelete,
+      }}
+    >
+      {children}
+    </TaskContext.Provider>
+  );
 }

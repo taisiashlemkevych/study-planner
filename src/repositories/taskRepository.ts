@@ -9,11 +9,34 @@ import type {
 } from '../types/apiTodo';
 import { httpClient } from '../api/httpClient';
 
+const LOCAL_DESCRIPTIONS_KEY = 'study-planner-task-descriptions';
+
+function getLocalDescriptions(): Record<number, string> {
+  try {
+    const stored = localStorage.getItem(LOCAL_DESCRIPTIONS_KEY);
+    return stored ? (JSON.parse(stored) as Record<number, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalDescription(id: number, description: string): void {
+  try {
+    const descriptions = getLocalDescriptions();
+    descriptions[id] = description;
+    localStorage.setItem(LOCAL_DESCRIPTIONS_KEY, JSON.stringify(descriptions));
+  } catch {
+    // Keep API operations working if localStorage is unavailable.
+  }
+}
+
 function toTask(todo: ApiTodo): Task {
+  const descriptions = getLocalDescriptions();
+
   return {
     id: todo.id,
     title: todo.todo,
-    description: '',
+    description: descriptions[todo.id] ?? '',
     completed: todo.completed,
     priority: 'medium',
     category: 'General',
@@ -61,6 +84,31 @@ export const taskRepository = {
     };
   },
 
+  async search(
+    query: string,
+    limit = 10,
+    skip = 0,
+    signal?: AbortSignal,
+  ): Promise<PaginatedTasks> {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const response = await httpClient.get<TodosResponse>('/todos', {
+      params: { limit: 0 },
+      signal,
+    });
+
+    const filteredTasks = response.data.todos
+      .map(toTask)
+      .filter((task) => task.title.toLowerCase().includes(normalizedQuery));
+
+    return {
+      tasks: filteredTasks.slice(skip, skip + limit),
+      total: filteredTasks.length,
+      skip,
+      limit,
+    };
+  },
+
   async getById(
     id: number,
     signal?: AbortSignal,
@@ -78,7 +126,13 @@ export const taskRepository = {
       toCreateDto(task),
     );
 
-    return toTask(response.data);
+    saveLocalDescription(response.data.id, task.description);
+    return {
+      ...toTask(response.data),
+      description: task.description,
+      priority: task.priority,
+      category: task.category,
+    };
   },
 
   async update(
@@ -90,7 +144,14 @@ export const taskRepository = {
       toUpdateDto(task),
     );
 
-    return toTask(response.data);
+    if (task.description !== undefined) {
+      saveLocalDescription(id, task.description);
+    }
+
+    return {
+      ...toTask(response.data),
+      description: task.description ?? getLocalDescriptions()[id] ?? '',
+    };
   },
 
   async delete(id: number): Promise<ApiTodoMutationResponse> {
