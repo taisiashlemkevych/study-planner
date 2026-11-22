@@ -978,3 +978,44 @@
   gap: 12px;
   margin-top: 24px;
 }
+
+.not-found-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 65vh;
+  padding: 30px 20px;
+}
+
+.not-found-page__content {
+  max-width: 480px;
+  text-align: center;
+}
+
+.not-found-page__code {
+  display: block;
+  color: #d69caf;
+  font-size: 76px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.not-found-page__content h1 {
+  margin: 18px 0 10px;
+  color: #493b40;
+  font-size: 25px;
+}
+
+.not-found-page__content p {
+  margin-bottom: 24px;
+  color: #a18b91;
+  font-size: 14px;
+}
+
+.app--dark .not-found-page__content h1 {
+  color: #eeeaf2;
+}
+
+.app--dark .not-found-page__content p {
+  color: #aaa3b5;
+}
