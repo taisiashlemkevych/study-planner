@@ -9,4 +9,6 @@ export interface Task {
   completed: boolean;
   priority: Priority;
   category: string;
+  createdBy?: string;
+  createdAt?: string;
 }

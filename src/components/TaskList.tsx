@@ -4,6 +4,7 @@ import TaskItem from './TaskItem';
 interface TaskListProps {
   tasks: Task[];
   hasTasks: boolean;
+  canManage: boolean;
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
   onEdit: (task: Task) => void;
@@ -13,6 +14,7 @@ interface TaskListProps {
 function TaskList({
   tasks,
   hasTasks,
+  canManage,
   onToggle,
   onDelete,
   onEdit,
@@ -42,6 +44,7 @@ function TaskList({
         <TaskItem
           key={task.id}
           task={task}
+          canManage={canManage}
           onToggle={onToggle}
           onDelete={onDelete}
           onEdit={onEdit}

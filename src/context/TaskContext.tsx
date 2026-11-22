@@ -4,7 +4,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-
 import type { Task } from '../types/task';
 import { taskRepository } from '../repositories/taskRepository';
 import { TaskContext } from './TaskContextValue';
@@ -27,6 +26,11 @@ export function TaskProvider({ children }: TaskProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+
+  const isLocallyCreated = useCallback(
+    (id: number) => locallyCreatedTasks.some((task) => task.id === id),
+    [locallyCreatedTasks],
+  );
 
   const loadTasks = useCallback(
     async (page: number, query: string, signal?: AbortSignal) => {
@@ -53,11 +57,13 @@ export function TaskProvider({ children }: TaskProviderProps) {
           );
 
           const tasksById = new Map<number, Task>();
+
           [...apiResult.tasks, ...localMatches].forEach((task) => {
             tasksById.set(task.id, task);
           });
 
           const matchingTasks = Array.from(tasksById.values());
+
           setTasks(matchingTasks.slice(skip, skip + limit));
           setTotal(matchingTasks.length);
         } else {
@@ -76,9 +82,14 @@ export function TaskProvider({ children }: TaskProviderProps) {
         }
       } catch (err) {
         if (signal?.aborted) return;
-        setError(err instanceof Error ? err.message : 'Failed to load tasks.');
+
+        setError(
+          err instanceof Error ? err.message : 'Failed to load tasks.',
+        );
       } finally {
-        if (!signal?.aborted) setLoading(false);
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
     },
     [locallyCreatedTasks],
@@ -86,15 +97,24 @@ export function TaskProvider({ children }: TaskProviderProps) {
 
   const addTask = async (task: Task): Promise<Task> => {
     setError(null);
+
     try {
       const createdTask = await taskRepository.create(task);
-      const taskWithId = { ...task, id: createdTask.id };
+
+      const taskWithId: Task = {
+        ...task,
+        id: createdTask.id,
+      };
+
       setLocallyCreatedTasks((previous) => [...previous, taskWithId]);
       setTasks((previous) => [...previous, taskWithId]);
       setTotal((previous) => previous + 1);
+
       return taskWithId;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create task.');
+      setError(
+        err instanceof Error ? err.message : 'Failed to create task.',
+      );
       throw err;
     }
   };
@@ -103,40 +123,81 @@ export function TaskProvider({ children }: TaskProviderProps) {
     const task = tasks.find((item) => item.id === id);
     if (!task) return;
 
-    const updatedTask = { ...task, completed: !task.completed };
+    const updatedTask = {
+      ...task,
+      completed: !task.completed,
+    };
 
     setTasks((previous) =>
       previous.map((item) => (item.id === id ? updatedTask : item)),
     );
+
+    if (isLocallyCreated(id)) {
+      setLocallyCreatedTasks((previous) =>
+        previous.map((item) => (item.id === id ? updatedTask : item)),
+      );
+      return;
+    }
+
     setError(null);
 
     try {
-      await taskRepository.update(id, { completed: updatedTask.completed });
+      await taskRepository.update(id, {
+        completed: updatedTask.completed,
+      });
     } catch (err) {
       setTasks((previous) =>
         previous.map((item) => (item.id === id ? task : item)),
       );
-      setError(err instanceof Error ? err.message : 'Failed to update task.');
+
+      setError(
+        err instanceof Error ? err.message : 'Failed to update task.',
+      );
       throw err;
     }
   };
 
   const updateTask = async (updatedTask: Task) => {
-    const previousTask = tasks.find((item) => item.id === updatedTask.id);
+    const previousTask = tasks.find(
+      (item) => item.id === updatedTask.id,
+    );
+
     if (!previousTask) return;
 
     setError(null);
+
+    if (isLocallyCreated(updatedTask.id)) {
+      setTasks((previous) =>
+        previous.map((item) =>
+          item.id === updatedTask.id ? updatedTask : item,
+        ),
+      );
+
+      setLocallyCreatedTasks((previous) =>
+        previous.map((item) =>
+          item.id === updatedTask.id ? updatedTask : item,
+        ),
+      );
+
+      return;
+    }
+
     try {
       await taskRepository.update(updatedTask.id, {
         title: updatedTask.title,
         completed: updatedTask.completed,
         description: updatedTask.description,
       });
+
       setTasks((previous) =>
-        previous.map((item) => (item.id === updatedTask.id ? updatedTask : item)),
+        previous.map((item) =>
+          item.id === updatedTask.id ? updatedTask : item,
+        ),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update task.');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update task.',
+      );
       throw err;
     }
   };
@@ -145,15 +206,24 @@ export function TaskProvider({ children }: TaskProviderProps) {
     const task = tasks.find((item) => item.id === id);
     if (!task) return;
 
-    if (pendingDelete) {
-      void taskRepository.delete(pendingDelete.task.id).catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to delete task.');
-      });
+    if (pendingDelete && !isLocallyCreated(pendingDelete.task.id)) {
+      void taskRepository
+        .delete(pendingDelete.task.id)
+        .catch((err: unknown) => {
+          setError(
+            err instanceof Error ? err.message : 'Failed to delete task.',
+          );
+        });
     }
 
     const index = tasks.findIndex((item) => item.id === id);
+
     setPendingDelete({ task, index });
-    setTasks((previous) => previous.filter((item) => item.id !== id));
+
+    setTasks((previous) =>
+      previous.filter((item) => item.id !== id),
+    );
+
     setTotal((previous) => Math.max(0, previous - 1));
   };
 
@@ -162,9 +232,16 @@ export function TaskProvider({ children }: TaskProviderProps) {
 
     setTasks((previous) => {
       const restored = [...previous];
-      restored.splice(Math.min(pendingDelete.index, restored.length), 0, pendingDelete.task);
+
+      restored.splice(
+        Math.min(pendingDelete.index, restored.length),
+        0,
+        pendingDelete.task,
+      );
+
       return restored;
     });
+
     setTotal((previous) => previous + 1);
     setPendingDelete(null);
   };
@@ -172,30 +249,66 @@ export function TaskProvider({ children }: TaskProviderProps) {
   useEffect(() => {
     if (!pendingDelete) return;
 
+    const taskToDelete = pendingDelete.task;
+
     const timer = window.setTimeout(() => {
-      void taskRepository
-        .delete(pendingDelete.task.id)
+      const deletePromise = isLocallyCreated(taskToDelete.id)
+        ? Promise.resolve()
+        : taskRepository.delete(taskToDelete.id);
+
+      void deletePromise
         .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : 'Failed to delete task.');
+          setError(
+            err instanceof Error ? err.message : 'Failed to delete task.',
+          );
         })
         .finally(() => {
+          setLocallyCreatedTasks((previous) =>
+            previous.filter((task) => task.id !== taskToDelete.id),
+          );
+
           setPendingDelete((current) =>
-            current?.task.id === pendingDelete.task.id ? null : current,
+            current?.task.id === taskToDelete.id ? null : current,
           );
         });
     }, DELETE_DELAY);
 
     return () => window.clearTimeout(timer);
-  }, [pendingDelete]);
+  }, [pendingDelete, isLocallyCreated]);
 
   const clearCompleted = async () => {
     const completedTasks = tasks.filter((task) => task.completed);
-    for (const task of completedTasks) {
-      await taskRepository.delete(task.id);
-    }
 
-    setTasks((previous) => previous.filter((task) => !task.completed));
-    setTotal((previous) => Math.max(0, previous - completedTasks.length));
+    try {
+      for (const task of completedTasks) {
+        if (!isLocallyCreated(task.id)) {
+          await taskRepository.delete(task.id);
+        }
+      }
+
+      const completedIds = new Set(
+        completedTasks.map((task) => task.id),
+      );
+
+      setTasks((previous) =>
+        previous.filter((task) => !completedIds.has(task.id)),
+      );
+
+      setLocallyCreatedTasks((previous) =>
+        previous.filter((task) => !completedIds.has(task.id)),
+      );
+
+      setTotal((previous) =>
+        Math.max(0, previous - completedTasks.length),
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to clear completed tasks.',
+      );
+      throw err;
+    }
   };
 
   const retry = () => setError(null);
